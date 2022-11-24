@@ -1,4 +1,4 @@
 CC = gcc
 
 main: main.c
-	$(CC) main.c -lpthread -o httpserver 
+	$(CC) main.c -lpthread -o main 

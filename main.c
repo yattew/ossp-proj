@@ -1,10 +1,10 @@
 #include <stdio.h>
-#include <string.h> // for strlen
+#include <string.h> 
 #include <stdlib.h>
 #include <sys/socket.h>
-#include <arpa/inet.h> // for inet_addr
-#include <unistd.h>    // for write
-#include <pthread.h>   // for threading, link with lpthread
+#include <arpa/inet.h>
+#include <unistd.h>
+#include <pthread.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -13,7 +13,6 @@
 #define PATH "/mnt/c/Users/yatha/Desktop/ossp proj"
 #define PORT_NO 8888
 #define BUFFER_SIZE 1024
-#define CONNECTION_NUMBER 10
 
 int thread_count = 0;
 sem_t mutex;
@@ -57,24 +56,24 @@ void html_handler(int socket, char *file_name)
     strcat(full_path, file_name);
 
     fp = fopen(full_path, "r");
-    if (fp != NULL) // FILE FOUND
+    if (fp != NULL) 
     {
         puts("File Found.");
 
-        fseek(fp, 0, SEEK_END); // Find the file size.
+        fseek(fp, 0, SEEK_END); 
         long bytes_read = ftell(fp);
         fseek(fp, 0, SEEK_SET);
 
-        send(socket, "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n", 44, 0); // Send the header for succesful respond.
+        send(socket, "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n", 44, 0); 
         buffer = (char *)malloc(bytes_read * sizeof(char));
 
-        fread(buffer, bytes_read, 1, fp);  // Read the html file to buffer.
-        write(socket, buffer, bytes_read); // Send the content of the html file to client.
+        fread(buffer, bytes_read, 1, fp); 
+        write(socket, buffer, bytes_read);
         free(buffer);
 
         fclose(fp);
     }
-    else // If there is not such a file.
+    else 
     {
         write(socket, "HTTP/1.0 404 Not Found\r\nConnection: close\r\nContent-Type: text/html\r\n\r\n<!doctype html><html><body>404 File Not Found</body></html>", strlen("HTTP/1.0 404 Not Found\r\nConnection: close\r\nContent-Type: text/html\r\n\r\n<!doctype html><html><body>404 File Not Found</body></html>"));
     }
@@ -89,16 +88,16 @@ void *connection_handler(void *socket_desc)
     char *file_name;
     char *extension;
 
-    // Get the socket descriptor.
+
     int sock = *((int *)socket_desc);
 
-    // Get the request.
+    
     request = recv(sock, client_reply, BUFFER_SIZE, 0);
 
     sem_wait(&mutex);
     thread_count++;
 
-    if (thread_count > 10) // If there is 10 request at the same time, other request will be refused.
+    if (thread_count > 10) 
     {
         char *message = "HTTP/1.0 400 Bad Request\r\nContent-Type: text/html\r\n\r\n<!doctype html><html><body>System is busy right now.</body></html>";
         write(sock, message, strlen(message));
@@ -112,15 +111,15 @@ void *connection_handler(void *socket_desc)
     }
     sem_post(&mutex);
 
-    if (request < 0) // Receive failed.
+    if (request < 0) 
     {
         puts("Recv failed");
     }
-    else if (request == 0) // receive socket closed. Client disconnected upexpectedly.
+    else if (request == 0) 
     {
         puts("Client disconnected upexpectedly.");
     }
-    else // Message received.
+    else 
     {
         printf("%s", client_reply);
         request_lines[0] = strtok(client_reply, " \t\n");
@@ -131,25 +130,26 @@ void *connection_handler(void *socket_desc)
             request_lines[2] = strtok(NULL, " \t\n");
 
             if (
-                strncmp(request_lines[2], "HTTP/1.0", 8) != 0 ||
-                strncmp(request_lines[2], "HTTP/1.1", 8) != 0) // Bad request if not HTTP 1.0 or 1.1
+                strncmp(request_lines[2], "HTTP/1.0", 8) != 0 &&
+                strncmp(request_lines[2], "HTTP/1.1", 8) != 0) 
             {
                 char *message = "HTTP/1.0 400 Bad Request\r\nConnection: close\r\nContent-Type: text/html\r\n\r\n<!doctype html><html><body>400 Bad Request</body></html>";
                 write(sock, message, strlen(message));
             }
             else
+            
             {
-                char *tokens[2]; // For parsing the file name and extension.
+                char *tokens[2]; 
 
                 file_name = (char *)malloc(strlen(request_lines[1]) * sizeof(char));
                 strcpy(file_name, request_lines[1]);
                 puts(file_name);
 
-                // Getting the file name and extension
+            
                 tokens[0] = strtok(file_name, ".");
                 tokens[1] = strtok(NULL, ".");
 
-                if (strcmp(tokens[0], "/favicon") == 0 && strcmp(tokens[1], "ico")) // Discard the favicon.ico requests.
+                if (strcmp(tokens[0], "/favicon") == 0 && strcmp(tokens[1], "ico")) 
                 {
                     sem_wait(&mutex);
                     thread_count--;
@@ -160,7 +160,7 @@ void *connection_handler(void *socket_desc)
                     sock = -1;
                     pthread_exit(NULL);
                 }
-                else if (tokens[0] == NULL || tokens[1] == NULL) // If there is not an extension in request or request to just localhost:8888/
+                else if (tokens[0] == NULL || tokens[1] == NULL) 
                 {
                     char *message = "HTTP/1.0 400 Bad Request\r\nConnection: close\r\n\r\n<!doctype html><html><body>400 Bad Request. (You need to request to jpeg and html files)</body></html>";
                     write(sock, message, strlen(message));
@@ -168,7 +168,7 @@ void *connection_handler(void *socket_desc)
                 else
                 {
 
-                    if (strcmp(tokens[1], "html") != 0 && strcmp(tokens[1], "jpeg") != 0) // If the request is not to html or jpeg files, it will be respond 400 Bad Request
+                    if (strcmp(tokens[1], "html") != 0 && strcmp(tokens[1], "jpeg") != 0) 
                     {
                         char *message = "HTTP/1.0 400 Bad Request\r\nConnection: close\r\n\r\n<!doctype html><html><body>400 Bad Request. Not Supported File Type (Suppoerted File Types: html and jpeg)</body></html>";
                         write(sock, message, strlen(message));
@@ -177,13 +177,13 @@ void *connection_handler(void *socket_desc)
                     {
                         if (strcmp(tokens[1], "html") == 0)
                         {
-                            sem_wait(&mutex); // Prevent two or more thread do some IO operation same time.
+                            sem_wait(&mutex); 
                             html_handler(sock, request_lines[1]);
                             sem_post(&mutex);
                         }
                         else if (strcmp(tokens[1], "jpeg") == 0)
                         {
-                            sem_wait(&mutex); // Prevent two or more thread do some IO operation same time
+                            sem_wait(&mutex); 
                             jpeg_handler(sock, request_lines[1]);
                             sem_post(&mutex);
                         }
@@ -196,7 +196,7 @@ void *connection_handler(void *socket_desc)
     }
 
     // sleep(50); to see 10 thread error
-
+    // sleep(100);
     free(socket_desc);
     shutdown(sock, SHUT_RDWR);
     close(sock);
@@ -207,9 +207,9 @@ void *connection_handler(void *socket_desc)
     pthread_exit(NULL);
 }
 
-int main(int argc, char *argv[])
+int main()
 {
-    sem_init(&mutex, 0, 1); // Inıtialize the mutex from 1.
+    sem_init(&mutex, 0, 1); 
     int socket_desc, new_socket, c, *new_sock;
     struct sockaddr_in server, client;
 
@@ -234,15 +234,15 @@ int main(int argc, char *argv[])
 
     puts("Waiting for incoming connections...");
     c = sizeof(struct sockaddr_in);
-    while ((new_socket = accept(socket_desc, (struct sockaddr *)&client, (socklen_t *)&c))) // Accept the connection.
+    while ((new_socket = accept(socket_desc, (struct sockaddr *)&client, (socklen_t *)&c))) 
     {
         puts("Connection accepted \n");
 
-        pthread_t sniffer_thread;
+        pthread_t conn_thread;
         new_sock = malloc(1);
         *new_sock = new_socket;
 
-        if (pthread_create(&sniffer_thread, NULL, connection_handler, (void *)new_sock) < 0) // Create a thread for each request.
+        if (pthread_create(&conn_thread, NULL, connection_handler, (void *)new_sock) < 0) 
         {
             puts("Could not create thread");
             return 1;
